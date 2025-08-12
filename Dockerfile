@@ -1,32 +1,25 @@
-FROM node:14-slim
+FROM python:3.11-alpine
 
-# Create and switch to a non-root user
-RUN groupadd -r appgroup && useradd -r -g appgroup -d /app -s /sbin/nologin appuser
-
-# Set working directory
+# Create app directory
 WORKDIR /usr/src/app
 
-# Copy package files first to cache dependencies
-COPY package*.json ./
+# Install build dependencies
+RUN apk add --no-cache gcc musl-dev libffi-dev
 
-# Install dependencies securely
-RUN npm ci --only=production
+# Install Flask directly (no requirements.txt)
+RUN pip install --no-cache-dir flask
 
-# Copy the rest of the application code
+# Bundle app source
 COPY . .
 
-# Set permissions for the app directory
-RUN chown -R appuser:appgroup /usr/src/app
-
-# Switch to non-root user
+# Create and use non-root user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
+    && chown -R appuser:appgroup /usr/src/app
 USER appuser
 
-# Expose port
 EXPOSE 3000
 
-# Add health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
-# Start app
-CMD ["node", "server.js"]
+CMD ["python", "app.py"]
