@@ -1,36 +1,27 @@
-name: 🔒 AUCA Container Security
+name: 🛡️ AUCA Trivy Security Scan
 
-on: [push, pull_request]
+on: [push]
 
 jobs:
-  security-scan:
+  trivy-scan:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Trivy
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
-          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-          echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update
-          sudo apt-get install -y trivy
+      - name: Install Trivy
+        uses: aquasecurity/trivy-action@0.9.0
+        with:
+          version: 'latest'
 
       - name: Build Docker image
-        run: docker build -t auca-app .
+        run: docker build -t myapp:latest .
 
-      - name: Scan for Critical/High vulnerabilities
+      - name: Scan with Trivy
         run: |
           trivy image \
             --severity CRITICAL,HIGH \
             --exit-code 1 \
+            --ignore-unfixed \
             --format table \
-            auca-app
-
-      - name: Upload Full Report
-        if: always()
-        run: |
-          trivy image --format json --output trivy-results.json auca-app
-        continue-on-error: true
+            myapp:latest
