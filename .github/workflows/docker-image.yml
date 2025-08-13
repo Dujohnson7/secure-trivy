@@ -1,68 +1,36 @@
-name: Multi-OS Container Security Scan
+name: 🔒 AUCA Container Security
 
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:  # Allow manual triggering
+on: [push, pull_request]
 
 jobs:
-  trivy-scan:
-    name: Scan (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    
-    permissions:
-      contents: read
-      security-events: write
-    
+  security-scan:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Docker
-        if: matrix.os != 'windows-latest'  # Windows has Docker installed by default
-        uses: docker/setup-buildx-action@v2
-
-      - name: Install Trivy
-        shell: bash
+      - name: Setup Trivy
         run: |
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            sudo apt-get update
-            sudo apt-get install -y wget apt-transport-https gnupg lsb-release
-            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-            echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
-            sudo apt-get update
-            sudo apt-get install -y trivy
-          elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            brew update
-            brew install aquasecurity/trivy/trivy
-          else
-            # Windows
-            choco install trivy -y
-          fi
+          sudo apt-get update
+          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install -y trivy
 
       - name: Build Docker image
-        run: docker build -t myapp:${{ github.sha }} .
+        run: docker build -t auca-app .
 
-      - name: Run Trivy vulnerability scanner
-        shell: bash
+      - name: Scan for Critical/High vulnerabilities
         run: |
           trivy image \
-            --format sarif \
-            --output trivy-results.sarif \
             --severity CRITICAL,HIGH \
             --exit-code 1 \
-            --ignore-unfixed \
-            --vuln-type os,library \
-            --security-checks vuln \
-            myapp:${{ github.sha }}
+            --format table \
+            auca-app
 
-      - name: Upload SARIF results
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: trivy-results.sarif
+      - name: Upload Full Report
+        if: always()
+        run: |
+          trivy image --format json --output trivy-results.json auca-app
+        continue-on-error: true
