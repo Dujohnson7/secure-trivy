@@ -3,17 +3,26 @@ FROM python:3.11-alpine
 # Create app directory
 WORKDIR /usr/src/app
 
-# Install build dependencies
-RUN apk add --no-cache gcc musl-dev libffi-dev
+# Install build dependencies and security updates
+RUN apk add --no-cache \
+    gcc \
+    musl-dev \
+    libffi-dev \
+    && pip install --upgrade pip setuptools==70.0.0 wheel
 
-# Install Flask directly (no requirements.txt)
-RUN pip install --no-cache-dir flask
+# Install Flask with pinned secure versions
+RUN pip install --no-cache-dir \
+    flask==3.0.2 \
+    markupsafe==2.1.5 \
+    itsdangerous==2.1.2 \
+    werkzeug==3.0.1
 
 # Bundle app source
-COPY . .
+COPY --chown=appuser:appgroup . .
 
-# Create and use non-root user
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
+# Create and use non-root user (optimized)
+RUN addgroup -S appgroup \
+    && adduser -S appuser -G appgroup \
     && chown -R appuser:appgroup /usr/src/app
 USER appuser
 
