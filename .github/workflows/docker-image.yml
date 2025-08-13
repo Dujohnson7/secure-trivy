@@ -9,6 +9,7 @@ on:
 jobs:
   trivy-scan:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,19 +21,29 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.cache/trivy
-          key: ${{ runner.os }}-trivy-db-${{ hashFiles('**/requirements.txt') }}
+          key: trivy-db-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
-            ${{ runner.os }}-trivy-db-
+            trivy-db-${{ runner.os }}-
 
-      - name: Install Trivy and scan for vulnerabilities
-        uses: aquasecurity/trivy-action@0.13
+      - name: Install Trivy
+        uses: aquasecurity/trivy-action@master
         with:
-          version: '0.65.0'
-          scan-type: 'image'
-          image-ref: 'myapp:latest'
-          format: 'table'
-          exit-code: '1'
-          severity: 'CRITICAL,HIGH'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          cache-dir: '~/.cache/trivy'
+          version: latest
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          tags: myapp:latest
+          load: true
+
+      - name: Scan Docker image
+        run: |
+          trivy image \
+            --exit-code 1 \
+            --severity CRITICAL,HIGH \
+            --ignore-unfixed \
+            --scanners vuln \
+            --format table \
+            --cache-dir ~/.cache/trivy \
+            myapp:latest
