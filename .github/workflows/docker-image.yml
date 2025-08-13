@@ -1,6 +1,10 @@
 name: 🛡️ Trivy Security Scan
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   trivy-scan:
@@ -9,20 +13,36 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Trivy
-        uses: aquasecurity/trivy-action@master
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Trivy DB
+        uses: actions/cache@v3
         with:
-          trivy-version: '0.65.0'
+          path: ~/.cache/trivy
+          key: trivy-db-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            trivy-db-
 
-      - name: Build Docker Image
-        run: docker build -t myapp:latest .
+      - name: Install Trivy
+        uses: aquasecurity/trivy-action@0.13
+        with:
+          version: '0.65.0'
 
-      - name: Scan Docker Image
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          tags: myapp:latest
+          load: true
+
+      - name: Scan Docker image
         run: |
           trivy image \
-          --exit-code 1 \
-          --severity CRITICAL \
-          --ignore-unfixed \
-          --scanners vuln \
-          --format table \
-          myapp:latest
+            --exit-code 1 \
+            --severity CRITICAL,HIGH \
+            --ignore-unfixed \
+            --scanners vuln \
+            --format table \
+            --cache-dir ~/.cache/trivy \
+            myapp:latest
