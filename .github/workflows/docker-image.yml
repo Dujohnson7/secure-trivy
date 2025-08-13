@@ -9,10 +9,6 @@ on:
 jobs:
   trivy-scan:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write  # Required for uploading SARIF results (if used)
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,39 +17,22 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Cache Trivy DB
-        uses: actions/cache@v4  # Updated to latest version
+        uses: actions/cache@v3
         with:
           path: ~/.cache/trivy
-          key: trivy-db-${{ hashFiles('**/requirements.txt', '**/Dockerfile') }}  # Include Dockerfile
-          restore-keys: trivy-db-
+          key: ${{ runner.os }}-trivy-db-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-trivy-db-
 
-      - name: Install Trivy
-        uses: aquasecurity/trivy-action@0.24.0  # Updated to a more recent version
+      - name: Install Trivy and scan for vulnerabilities
+        uses: aquasecurity/trivy-action@0.13
         with:
-          version: '0.65.0'  # Ensure compatibility with trivy-action version
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v6  # Updated to latest version
-        with:
-          context: .
-          tags: myapp:latest
-          load: true  # Ensures image is available locally for scanning
-          push: false  # Explicitly disable push for security
-
-      - name: Scan Docker image
-        run: |
-          trivy image \
-            --exit-code 1 \
-            --severity CRITICAL,HIGH \
-            --ignore-unfixed \
-            --scanners vuln \
-            --format sarif \
-            --output trivy-results.sarif \
-            --cache-dir ~/.cache/trivy \
-            myapp:latest
-
-      - name: Upload Trivy scan results
-        if: always()  # Upload results even if scan fails
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy-results.sarif
+          version: '0.65.0'
+          scan-type: 'image'
+          image-ref: 'myapp:latest'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          cache-dir: '~/.cache/trivy'
