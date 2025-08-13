@@ -9,6 +9,7 @@ on:
 jobs:
   trivy-scan:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,12 +21,12 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.cache/trivy
-          key: trivy-db-${{ hashFiles('**/requirements.txt') }}
+          key: trivy-db-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
-            trivy-db-
+            trivy-db-${{ runner.os }}-
 
       - name: Install Trivy
-        uses: aquasecurity/trivy-action@0.13
+        uses: aquasecurity/trivy-action@master
         with:
           version: '0.65.0'
 
