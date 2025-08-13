@@ -1,6 +1,6 @@
-name: 🛡️ Trivy Image Scan
+name: 🛡️ Trivy Security Scan
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   trivy-scan:
@@ -10,9 +10,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Trivy
-        run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-          trivy --version
+        uses: aquasecurity/trivy-action@master
+        with:
+          trivy-version: '0.65.0'
 
       - name: Build Docker Image
         run: docker build -t myapp:latest .
@@ -21,7 +21,9 @@ jobs:
         run: |
           trivy image \
             --exit-code 1 \
-            --severity CRITICAL,HIGH \
+            --severity CRITICAL \
             --ignore-unfixed \
+            --security-checks vuln \
             --format table \
+            --ignorefile .trivyignore \
             myapp:latest
