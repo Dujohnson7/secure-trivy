@@ -20,10 +20,9 @@ jobs:
       - name: Scan Docker Image
         run: |
           trivy image \
-            --exit-code 1 \
-            --severity CRITICAL \
-            --ignore-unfixed \
-            --security-checks vuln \
-            --format table \
-            --ignorefile .trivyignore \
-            myapp:latest
+          --exit-code 1 \
+          --severity CRITICAL \
+          --ignore-unfixed \
+          --scanners vuln \
+          --format table \
+          myapp:latest
