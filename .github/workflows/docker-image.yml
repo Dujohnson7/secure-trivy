@@ -1,37 +1,43 @@
-FROM python:3.11-alpine
+name: 🛡️ Trivy Security Scan
 
-# Create app directory
-WORKDIR /usr/src/app
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
-# Install build dependencies and security updates
-RUN apk add --no-cache \
-    gcc \
-    musl-dev \
-    libffi-dev \
-    && pip install --upgrade pip setuptools==78.1.1 wheel
+jobs:
+  trivy-scan:
+    runs-on: ubuntu-latest
 
-# Install Flask with patched versions
-RUN pip install --no-cache-dir \
-    flask==3.0.2 \
-    markupsafe==2.1.5 \
-    itsdangerous==2.1.2 \
-    werkzeug==3.0.3
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-# Debug: show installed versions
-RUN python -m pip show setuptools werkzeug || true
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-# Bundle app source
-COPY --chown=appuser:appgroup . .
+      - name: Cache Trivy DB
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            trivy-db-${{ runner.os }}-
 
-# Create and use non-root user (optimized)
-RUN addgroup -S appgroup \
-    && adduser -S appuser -G appgroup \
-    && chown -R appuser:appgroup /usr/src/app
-USER appuser
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          tags: myapp:latest
+          load: true
 
-EXPOSE 3000
-
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
-
-CMD ["python", "app.py"]
+      - name: Scan Docker image
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: image
+          image-ref: myapp:latest
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1
