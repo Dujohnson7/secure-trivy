@@ -8,14 +8,17 @@ RUN apk add --no-cache \
     gcc \
     musl-dev \
     libffi-dev \
-    && pip install --upgrade pip setuptools==70.0.0 wheel
+    && pip install --upgrade pip setuptools==78.1.1 wheel
 
-# Install Flask with pinned secure versions
+# Install Flask with patched versions
 RUN pip install --no-cache-dir \
     flask==3.0.2 \
     markupsafe==2.1.5 \
     itsdangerous==2.1.2 \
-    werkzeug==3.0.1
+    werkzeug==3.0.3
+
+# Debug: show installed versions
+RUN python -m pip show setuptools werkzeug || true
 
 # Bundle app source
 COPY --chown=appuser:appgroup . .
