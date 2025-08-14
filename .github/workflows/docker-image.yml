@@ -10,19 +10,23 @@ jobs:
   trivy-scan:
     runs-on: ubuntu-latest
 
-    steps: 
+    steps:
+      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v4
- 
+
+      # Step 2: Set up Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
- 
+
+      # Step 3: Log in to Docker Hub using GitHub username
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DockerS }}
- 
+          username: ${{ github.actor }}
+          password: ${{ secrets.DOCK_TOKEN }}
+
+      # Step 4: Cache Trivy DB for faster scans
       - name: Cache Trivy DB
         uses: actions/cache@v3
         with:
@@ -30,19 +34,21 @@ jobs:
           key: trivy-db-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
             trivy-db-${{ runner.os }}-
- 
+
+      # Step 5: Build and push Docker image
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
-          tags: dujohnson7/myapp:latest
+          tags: ${{ github.actor }}/myapp:latest
           push: true
- 
+
+      # Step 6: Scan Docker image with Trivy
       - name: Scan Docker image
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: image
-          image-ref: dujohnson7/myapp:latest
+          image-ref: ${{ github.actor }}/myapp:latest
           format: table
           severity: CRITICAL,HIGH
           ignore-unfixed: true
