@@ -25,11 +25,6 @@ jobs:
           restore-keys: |
             trivy-db-${{ runner.os }}-
 
-      - name: Install Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          version: latest
-
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
@@ -38,12 +33,11 @@ jobs:
           load: true
 
       - name: Scan Docker image
-        run: |
-          trivy image \
-            --exit-code 1 \
-            --severity CRITICAL,HIGH \
-            --ignore-unfixed \
-            --scanners vuln \
-            --format table \
-            --cache-dir ~/.cache/trivy \
-            myapp:latest
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: image
+          image-ref: myapp:latest
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1
