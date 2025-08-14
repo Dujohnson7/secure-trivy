@@ -24,7 +24,7 @@ jobs:
         uses: docker/login-action@v2
         with:
           username: ${{ github.actor }}
-          password: ${{ secrets.DOCK_TOKEN }}
+          password: ${{ secrets.SecureDocker }}
 
       # Step 4: Cache Trivy DB for faster scans
       - name: Cache Trivy DB
